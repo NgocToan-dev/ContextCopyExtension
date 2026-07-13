@@ -51,6 +51,7 @@ const dom = {
   btnSelectAll: $('#btn-select-all'),
   btnSend: $('#btn-send'),
   sendResult: $('#send-result'),
+  btnCopyContext: $('#btn-copy-context'),
   errorBanner: $('#error-banner'),
 };
 
@@ -110,15 +111,14 @@ async function init() {
     const ctx = response.data;
     const user = ctx.User || {};
 
-    // Tự động điền sender info từ contextData nếu chưa lưu trước đó
+    // Tự động điền sender info: dùng giá trị đã lưu, hoặc default, hoặc từ contextData
     const saved = await chrome.storage.local.get(SENDER_KEY);
     if (!saved[SENDER_KEY]) {
-      const autoId = user.misa_id || '';
-      const lastName = user.last_name || '';
-      const firstName = user.first_name || '';
-      const autoName = [lastName, firstName].filter(Boolean).join(' ') || user.user_name || '';
-      dom.senderIdInput.value = autoId;
-      dom.senderNameInput.value = autoName;
+      const defaultId = '930fe185-0493-4c17-bf32-bf2595fa9cef';
+      const defaultName = 'Phan Ngọc Toản';
+      dom.senderIdInput.value = defaultId;
+      dom.senderNameInput.value = defaultName;
+      await saveSenderInfo();
     } else {
       dom.senderIdInput.value = saved[SENDER_KEY].id || '';
       dom.senderNameInput.value = saved[SENDER_KEY].name || '';
@@ -364,6 +364,22 @@ dom.btnSelectAll.addEventListener('click', () => {
 dom.sendList.addEventListener('change', (e) => {
   if (e.target.classList.contains('send-check')) {
     updateSelectAllButton();
+  }
+});
+
+// Copy context
+dom.btnCopyContext.addEventListener('click', async () => {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const response = await sendToContent(tab.id, { action: 'getContextData' });
+    if (response && response.success) {
+      await navigator.clipboard.writeText(JSON.stringify(response.data, null, 2));
+      // Flash feedback
+      dom.btnCopyContext.textContent = '✅ Đã copy!';
+      setTimeout(() => { dom.btnCopyContext.textContent = '📋 Copy Context'; }, 1500);
+    }
+  } catch (e) {
+    alert('Không copy được: ' + e.message);
   }
 });
 

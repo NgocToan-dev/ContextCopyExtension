@@ -36,9 +36,27 @@ body {
   margin-bottom: 4px;
 }
 
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .header .muted {
   font-size: 11px;
   opacity: 0.85;
+}
+
+.btn-outline-light {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  white-space: nowrap;
+}
+
+.btn-outline-light:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 /* === Error Banner === */
