@@ -33,8 +33,13 @@
 
     <!-- ===== Tab: Gửi tin ===== -->
     <section id="tab-send" class="tab-content">
-      <div id="sender-badge" class="info-badge">
-        <span id="sender-label">Người gửi: --</span>
+      <div class="form-group">
+        <label>Sender ID (tự lấy từ contextData):</label>
+        <input type="text" id="sender-id-input" placeholder="vd: 930fe185-0493-4c17-bf32-bf2595fa9cef">
+      </div>
+      <div class="form-group">
+        <label>Sender Name:</label>
+        <input type="text" id="sender-name-input" placeholder="Tên người gửi">
       </div>
 
       <div id="send-list" class="item-list">

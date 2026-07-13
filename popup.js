@@ -3,12 +3,11 @@
  */
 
 // --- State ---
-let senderId = '';
-let senderName = '';
 let conversations = [];
 
 // --- Storage helpers ---
 const STORAGE_KEY = 'amis_conversations';
+const SENDER_KEY = 'amis_sender_info';
 
 async function loadConversations() {
   const result = await chrome.storage.local.get(STORAGE_KEY);
@@ -17,6 +16,20 @@ async function loadConversations() {
 
 async function saveConversations() {
   await chrome.storage.local.set({ [STORAGE_KEY]: conversations });
+}
+
+async function loadSenderInfo() {
+  const result = await chrome.storage.local.get(SENDER_KEY);
+  if (result[SENDER_KEY]) {
+    dom.senderIdInput.value = result[SENDER_KEY].id || '';
+    dom.senderNameInput.value = result[SENDER_KEY].name || '';
+  }
+}
+
+async function saveSenderInfo() {
+  await chrome.storage.local.set({
+    [SENDER_KEY]: { id: dom.senderIdInput.value.trim(), name: dom.senderNameInput.value.trim() },
+  });
 }
 
 // --- DOM refs ---
@@ -31,7 +44,8 @@ const dom = {
   convName: $('#conv-name'),
   btnAdd: $('#btn-add'),
   convList: $('#conv-list'),
-  senderLabel: $('#sender-label'),
+  senderIdInput: $('#sender-id-input'),
+  senderNameInput: $('#sender-name-input'),
   sendList: $('#send-list'),
   msgContent: $('#msg-content'),
   btnSelectAll: $('#btn-select-all'),
@@ -77,6 +91,9 @@ async function init() {
 
     if (!tab || !tab.url || !tab.url.startsWith('https://misajsc.amis.vn')) {
       showError('Vui lòng mở extension trên trang misajsc.amis.vn.');
+      await loadSenderInfo();
+      await loadConversations();
+      renderAll();
       return;
     }
 
@@ -84,23 +101,39 @@ async function init() {
 
     if (!response || !response.success || !response.data) {
       showError('Không đọc được contextData. Hãy đăng nhập vào AMIS trước.');
+      await loadSenderInfo();
+      await loadConversations();
+      renderAll();
       return;
     }
 
     const ctx = response.data;
     const user = ctx.User || {};
-    senderId = user.misa_id || '';
-    const lastName = user.last_name || '';
-    const firstName = user.first_name || '';
-    senderName = [lastName, firstName].filter(Boolean).join(' ') || user.user_name || 'Unknown';
 
-    dom.userBar.textContent = `👤 ${senderName} (${senderId})`;
-    dom.senderLabel.textContent = `Người gửi: ${senderName}`;
+    // Tự động điền sender info từ contextData nếu chưa lưu trước đó
+    const saved = await chrome.storage.local.get(SENDER_KEY);
+    if (!saved[SENDER_KEY]) {
+      const autoId = user.misa_id || '';
+      const lastName = user.last_name || '';
+      const firstName = user.first_name || '';
+      const autoName = [lastName, firstName].filter(Boolean).join(' ') || user.user_name || '';
+      dom.senderIdInput.value = autoId;
+      dom.senderNameInput.value = autoName;
+    } else {
+      dom.senderIdInput.value = saved[SENDER_KEY].id || '';
+      dom.senderNameInput.value = saved[SENDER_KEY].name || '';
+    }
+
+    dom.userBar.textContent =
+      `👤 ${dom.senderNameInput.value || 'Unknown'} (${dom.senderIdInput.value || 'no ID'})`;
 
     await loadConversations();
     renderAll();
   } catch (e) {
     showError('Lỗi kết nối: ' + e.message + ' — Hãy reload trang AMIS rồi thử lại.');
+    await loadSenderInfo();
+    await loadConversations();
+    renderAll();
   }
 }
 
@@ -216,7 +249,13 @@ function updateSelectAllButton() {
 async function sendMessages() {
   const selected = getSelectedConvs();
   const content = dom.msgContent.value.trim();
+  const senderId = dom.senderIdInput.value.trim();
+  const senderName = dom.senderNameInput.value.trim();
 
+  if (!senderId || !senderName) {
+    alert('Vui lòng điền Sender ID và Sender Name.');
+    return;
+  }
   if (selected.length === 0) {
     alert('Vui lòng chọn ít nhất 1 conversation.');
     return;
@@ -225,6 +264,9 @@ async function sendMessages() {
     alert('Vui lòng nhập nội dung tin nhắn.');
     return;
   }
+
+  // Lưu sender info
+  await saveSenderInfo();
 
   const names = selected.map((c) => c.name).join(', ');
   if (!confirm(`Gửi "${content}" đến ${selected.length} người nhận: ${names}?`)) return;
@@ -327,6 +369,18 @@ dom.sendList.addEventListener('change', (e) => {
 
 // Send
 dom.btnSend.addEventListener('click', sendMessages);
+
+// Auto-save sender info when changed
+dom.senderIdInput.addEventListener('change', () => {
+  saveSenderInfo();
+  dom.userBar.textContent =
+    `👤 ${dom.senderNameInput.value || 'Unknown'} (${dom.senderIdInput.value || 'no ID'})`;
+});
+dom.senderNameInput.addEventListener('change', () => {
+  saveSenderInfo();
+  dom.userBar.textContent =
+    `👤 ${dom.senderNameInput.value || 'Unknown'} (${dom.senderIdInput.value || 'no ID'})`;
+});
 
 // --- Utility ---
 function esc(str) {
