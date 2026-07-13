@@ -8,58 +8,49 @@
   <div id="app">
     <!-- Header -->
     <div class="header">
-      <div class="header-row">
-        <h1>📨 AMIS Chat Sender</h1>
-        <button id="btn-copy-context" class="btn btn-sm btn-outline-light" title="Copy contextData từ localStorage">📋 Copy Context</button>
-      </div>
-      <div id="user-bar" class="muted">Đang tải thông tin người gửi...</div>
+      <h1>📨 AMIS Chat Sender</h1>
+      <div id="user-bar" class="muted">Đang tải...</div>
     </div>
 
-    <!-- Tabs -->
-    <nav class="tabs">
-      <button class="tab active" data-tab="conversations">📋 Conversations</button>
-      <button class="tab" data-tab="send">✉️ Gửi tin</button>
-    </nav>
-
-    <!-- ===== Tab: Conversations ===== -->
-    <section id="tab-conversations" class="tab-content active">
+    <!-- Sender info -->
+    <div class="section">
       <div class="form-row">
-        <input type="text" id="conv-id" placeholder="Conversation ID">
-        <input type="text" id="conv-name" placeholder="Tên hiển thị">
+        <div class="form-group flex-1">
+          <label>Sender ID</label>
+          <input type="text" id="sender-id-input" placeholder="GUID sender">
+        </div>
+        <div class="form-group flex-1">
+          <label>Sender Name</label>
+          <input type="text" id="sender-name-input" placeholder="Tên người gửi">
+        </div>
+      </div>
+    </div>
+
+    <!-- Conversations -->
+    <div class="section">
+      <label class="section-label">Conversations</label>
+      <div class="form-row">
+        <input type="text" id="conv-id" placeholder="Conversation ID" class="flex-2">
+        <input type="text" id="conv-name" placeholder="Tên" class="flex-1">
         <button id="btn-add" class="btn btn-sm btn-primary">+ Thêm</button>
       </div>
-
       <div id="conv-list" class="item-list">
         <div class="empty-hint">Chưa có conversation nào.</div>
       </div>
-    </section>
+    </div>
 
-    <!-- ===== Tab: Gửi tin ===== -->
-    <section id="tab-send" class="tab-content">
-      <div class="form-group">
-        <label>Sender ID (tự lấy từ contextData):</label>
-        <input type="text" id="sender-id-input" placeholder="vd: 930fe185-0493-4c17-bf32-bf2595fa9cef">
-      </div>
-      <div class="form-group">
-        <label>Sender Name:</label>
-        <input type="text" id="sender-name-input" placeholder="Tên người gửi">
-      </div>
-
-      <div id="send-list" class="item-list">
-        <div class="empty-hint">Chưa thêm conversation nào. Vào tab Conversations để thêm.</div>
-      </div>
-
-      <div class="form-group">
-        <textarea id="msg-content" rows="3" placeholder="Nội dung tin nhắn..."></textarea>
-      </div>
-
+    <!-- Message + Send -->
+    <div class="section">
+      <textarea id="msg-content" rows="2" placeholder="Nội dung tin nhắn (bỏ trống nếu dùng nút Copy & Gửi Context)..."></textarea>
       <div class="action-row">
-        <button id="btn-select-all" class="btn btn-sm btn-outline">Chọn tất cả</button>
-        <button id="btn-send" class="btn btn-send">▶ Gửi</button>
+        <button id="btn-select-all" class="btn btn-sm btn-outline">Chọn / Bỏ chọn tất cả</button>
+        <div class="btn-group">
+          <button id="btn-copy-send" class="btn btn-copy-send">📋 Copy & Gửi Context</button>
+          <button id="btn-send" class="btn btn-send">▶ Gửi</button>
+        </div>
       </div>
-
       <div id="send-result"></div>
-    </section>
+    </div>
 
     <!-- Error banner -->
     <div id="error-banner" class="error-banner hidden"></div>
