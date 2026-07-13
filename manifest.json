@@ -5,7 +5,8 @@
   "description": "Gửi tin nhắn hàng loạt qua AMIS Chat API",
   "permissions": [
     "storage",
-    "activeTab"
+    "activeTab",
+    "scripting"
   ],
   "host_permissions": [
     "https://misajsc.amis.vn/*"

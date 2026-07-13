@@ -40,17 +40,47 @@ const dom = {
   errorBanner: $('#error-banner'),
 };
 
+// --- Communication helper ---
+
+/**
+ * Gửi message tới content script. Nếu content script chưa được inject
+ * (vd: trang đã mở từ trước khi cài extension), tự động inject rồi thử lại.
+ */
+async function sendToContent(tabId, message) {
+  try {
+    return await chrome.tabs.sendMessage(tabId, message);
+  } catch (e) {
+    // Content script not loaded yet — inject it now
+    if (e.message.includes('Receiving end does not exist') ||
+        e.message.includes('Could not establish connection')) {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        files: ['content.js'],
+      });
+      // Đợi script khởi tạo xong rồi thử lại
+      await sleep(100);
+      return await chrome.tabs.sendMessage(tabId, message);
+    }
+    throw e;
+  }
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // --- Init ---
 
 async function init() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.url.startsWith('https://misajsc.amis.vn')) {
+
+    if (!tab || !tab.url || !tab.url.startsWith('https://misajsc.amis.vn')) {
       showError('Vui lòng mở extension trên trang misajsc.amis.vn.');
       return;
     }
 
-    const response = await chrome.tabs.sendMessage(tab.id, { action: 'getContextData' });
+    const response = await sendToContent(tab.id, { action: 'getContextData' });
 
     if (!response || !response.success || !response.data) {
       showError('Không đọc được contextData. Hãy đăng nhập vào AMIS trước.');
@@ -70,7 +100,7 @@ async function init() {
     await loadConversations();
     renderAll();
   } catch (e) {
-    showError('Lỗi kết nối: ' + e.message + ' — Vui lòng mở extension trên trang AMIS.');
+    showError('Lỗi kết nối: ' + e.message + ' — Hãy reload trang AMIS rồi thử lại.');
   }
 }
 
@@ -215,7 +245,7 @@ async function sendMessages() {
       senderName,
     };
 
-    const response = await chrome.tabs.sendMessage(tab.id, {
+    const response = await sendToContent(tab.id, {
       action: 'sendMessages',
       ...payload,
     });
@@ -241,7 +271,7 @@ async function sendMessages() {
           <div class="result-row ${r.success ? 'ok' : 'err'}">
             <strong>${esc(r.conversationName)}</strong>
             <code>${esc(r.conversationId)}</code>
-            ${r.success ? '✅' : `❌ ${r.error || r.status || ''}`}
+            ${r.success ? '✅' : `❌ ${r.status || ''} ${typeof r.data === 'object' ? JSON.stringify(r.data) : (r.error || r.data || '')}`}
           </div>`
           )
           .join('')}
