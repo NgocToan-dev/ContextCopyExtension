@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "AMIS Chat Sender",
+  "version": "1.0.0",
+  "description": "Gửi tin nhắn hàng loạt qua AMIS Chat API",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://misajsc.amis.vn/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://misajsc.amis.vn/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "AMIS Chat Sender"
+  }
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <div class="header">
+      <h1>📨 AMIS Chat Sender</h1>
+      <div id="user-bar" class="muted">Đang tải thông tin người gửi...</div>
+    </div>
+
+    <!-- Tabs -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="conversations">📋 Conversations</button>
+      <button class="tab" data-tab="send">✉️ Gửi tin</button>
+    </nav>
+
+    <!-- ===== Tab: Conversations ===== -->
+    <section id="tab-conversations" class="tab-content active">
+      <div class="form-row">
+        <input type="text" id="conv-id" placeholder="Conversation ID">
+        <input type="text" id="conv-name" placeholder="Tên hiển thị">
+        <button id="btn-add" class="btn btn-sm btn-primary">+ Thêm</button>
+      </div>
+
+      <div id="conv-list" class="item-list">
+        <div class="empty-hint">Chưa có conversation nào.</div>
+      </div>
+    </section>
+
+    <!-- ===== Tab: Gửi tin ===== -->
+    <section id="tab-send" class="tab-content">
+      <div id="sender-badge" class="info-badge">
+        <span id="sender-label">Người gửi: --</span>
+      </div>
+
+      <div id="send-list" class="item-list">
+        <div class="empty-hint">Chưa thêm conversation nào. Vào tab Conversations để thêm.</div>
+      </div>
+
+      <div class="form-group">
+        <textarea id="msg-content" rows="3" placeholder="Nội dung tin nhắn..."></textarea>
+      </div>
+
+      <div class="action-row">
+        <button id="btn-select-all" class="btn btn-sm btn-outline">Chọn tất cả</button>
+        <button id="btn-send" class="btn btn-send">▶ Gửi</button>
+      </div>
+
+      <div id="send-result"></div>
+    </section>
+
+    <!-- Error banner -->
+    <div id="error-banner" class="error-banner hidden"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
