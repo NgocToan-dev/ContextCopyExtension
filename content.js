@@ -82,10 +82,7 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     try {
       const raw = localStorage.getItem('contextData');
       let contextData = raw ? JSON.parse(raw) : null;
-      // contextData thường bọc trong key "context"
-      if (contextData && contextData.context) {
-        contextData = contextData.context;
-      }
+
       sendResponse({ success: true, data: contextData });
     } catch (e) {
       sendResponse({ success: false, error: e.message });
