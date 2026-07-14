@@ -5,13 +5,25 @@
 // --- State ---
 let conversations = [];
 
+// --- Danh sách người nhận mặc định (sửa ở đây) ---
+const DEFAULT_CONVERSATIONS = [
+  { id: '685b586d35628401eb5faa87', name: 'ndquang' },
+  { id: '68342bd75d6309d2992eba6a', name: 'nxhung' },
+  { id: '68536960cd604ecf8276b9a5', name: 'pvdat' },
+];
+
 // --- Storage ---
 const STORAGE_KEY = 'amis_conversations';
 const SENDER_KEY = 'amis_sender_info';
 
 async function loadConversations() {
   const r = await chrome.storage.local.get(STORAGE_KEY);
-  conversations = r[STORAGE_KEY] || [];
+  if (r[STORAGE_KEY] && r[STORAGE_KEY].length > 0) {
+    conversations = r[STORAGE_KEY];
+  } else {
+    // Lần đầu dùng → load danh sách default
+    conversations = [...DEFAULT_CONVERSATIONS];
+  }
 }
 async function saveConversations() {
   await chrome.storage.local.set({ [STORAGE_KEY]: conversations });
