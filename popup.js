@@ -101,45 +101,56 @@ function sleep(ms) {
 
 // --- Init ---
 async function init() {
-  await loadSenderInfo();
   await loadConversations();
 
-  if (!dom.senderId.value) {
-    dom.senderId.value = '930fe185-0493-4c17-bf32-bf2595fa9cef';
-    dom.senderName.value = 'Phan Ngọc Toản';
-    await saveSenderInfo();
-  }
-
-  dom.userBar.textContent =
-    `👤 ${dom.senderName.value || 'Unknown'} (${dom.senderId.value || 'no ID'})`;
+  // Bắt buộc lấy userId & FullName từ localStorage của trang AMIS
+  let gotUserInfo = false;
 
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (tab && tab.url && tab.url.startsWith('https://misajsc.amis.vn')) {
-      const resp = await sendToContent(tab.id, { action: 'getContextData' });
-      if (resp && resp.success) {
-        dom.userBar.textContent += ' ✅ Connected';
-      }
+    if (!tab || !tab.url || !tab.url.startsWith('https://misajsc.amis.vn')) {
+      showFatal('Vui lòng mở trang AMIS (misajsc.amis.vn) và đăng nhập trước.');
+      return;
+    }
 
-      // Lấy userId & FullName từ localStorage của trang AMIS làm mặc định
-      const userResp = await sendToContent(tab.id, { action: 'getUserInfo' });
-      if (userResp && userResp.success && userResp.data) {
-        if (userResp.data.userId && !dom.senderId.value) {
-          dom.senderId.value = userResp.data.userId;
-        }
-        if (userResp.data.fullName && !dom.senderName.value) {
-          dom.senderName.value = userResp.data.fullName;
-        }
-        await saveSenderInfo();
+    const userResp = await sendToContent(tab.id, { action: 'getUserInfo' });
+    if (userResp && userResp.success && userResp.data) {
+      const { userId, fullName } = userResp.data;
+      if (userId) {
+        dom.senderId.value = userId;
+        gotUserInfo = true;
+      }
+      if (fullName) {
+        dom.senderName.value = fullName;
       }
     }
-  } catch (_) { /* không sao */ }
+
+    if (!gotUserInfo) {
+      showFatal('Không tìm thấy AMIS_CHAT_last_user_id trong localStorage. Hãy đăng nhập AMIS trước.');
+      return;
+    }
+
+    await saveSenderInfo();
+  } catch (e) {
+    showFatal('Không kết nối được đến trang AMIS: ' + e.message);
+    return;
+  }
 
   // Hiển thị badge phân quyền
   updatePermissionBadge();
 
   renderConvList();
   updateButtons();
+}
+
+function showFatal(msg) {
+  dom.userBar.innerHTML = `<span style="color:#ffcdd2;">⚠ ${escHtml(msg)}</span>`;
+  // Ẩn tất cả section, chỉ giữ lại header
+  dom.sectionConversations.classList.add('hidden');
+  dom.sectionSend.classList.add('hidden');
+  // Ẩn cả clipboard section
+  const clipboardSection = dom.btnReadClipboard.closest('.section');
+  if (clipboardSection) clipboardSection.classList.add('hidden');
 }
 
 function updatePermissionBadge() {
