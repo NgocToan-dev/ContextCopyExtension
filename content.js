@@ -90,6 +90,19 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     return true;
   }
 
+  // Lấy thông tin user từ localStorage (userId & fullName mặc định)
+  if (request.action === 'getUserInfo') {
+    try {
+      const userId = localStorage.getItem('AMIS_CHAT_last_user_id');
+      const fullName = localStorage.getItem('FullName');
+
+      sendResponse({ success: true, data: { userId, fullName } });
+    } catch (e) {
+      sendResponse({ success: false, error: e.message });
+    }
+    return true;
+  }
+
   // Gửi tin nhắn
   if (request.action === 'sendMessages') {
     const { messages, senderId, senderName } = request;

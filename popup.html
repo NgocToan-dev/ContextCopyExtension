@@ -12,8 +12,8 @@
       <div id="user-bar" class="muted">Đang tải...</div>
     </div>
 
-    <!-- Sender info -->
-    <div class="section">
+    <!-- Sender info (hidden — tự động lấy từ localStorage) -->
+    <div class="section hidden">
       <div class="form-row">
         <div class="form-group flex-1">
           <label>Sender ID</label>
@@ -27,7 +27,7 @@
     </div>
 
     <!-- Conversations -->
-    <div class="section">
+    <div class="section" id="section-conversations">
       <label class="section-label">Conversations</label>
       <div class="form-row">
         <input type="text" id="conv-id" placeholder="Conversation ID" class="flex-2">
@@ -52,7 +52,7 @@
     </div>
 
     <!-- Message + Send -->
-    <div class="section">
+    <div class="section" id="section-send">
       <textarea id="msg-content" rows="2" placeholder="Nội dung tin nhắn..."></textarea>
       <div class="action-row">
         <button id="btn-copy-send" class="btn btn-copy-send">📋 Copy & Gửi Context</button>

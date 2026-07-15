@@ -13,6 +13,18 @@ const DEFAULT_CONVERSATIONS = [
   { id: '68536960cd604ecf8276b9a5', name: 'pvdat' },
 ];
 
+// --- Danh sách ID được phép gửi tin nhắn (sửa ở đây) ---
+// Người dùng không có trong danh sách này chỉ được get/update context, không được gửi
+const AUTHORIZED_SENDERS = [
+  '930fe185-0493-4c17-bf32-bf2595fa9cef', // pntoan
+];
+
+function isAuthorizedSender() {
+  const currentId = dom.senderId.value.trim();
+  if (!currentId) return false;
+  return AUTHORIZED_SENDERS.some((id) => id.toLowerCase() === currentId.toLowerCase());
+}
+
 // --- Storage ---
 const STORAGE_KEY = 'amis_conversations';
 const SENDER_KEY = 'amis_sender_info';
@@ -62,6 +74,8 @@ const dom = {
   clipboardText: $('#clipboard-text'),
   sendResult: $('#send-result'),
   errorBanner: $('#error-banner'),
+  sectionConversations: $('#section-conversations'),
+  sectionSend: $('#section-send'),
 };
 
 // --- Communication ---
@@ -106,11 +120,50 @@ async function init() {
       if (resp && resp.success) {
         dom.userBar.textContent += ' ✅ Connected';
       }
+
+      // Lấy userId & FullName từ localStorage của trang AMIS làm mặc định
+      const userResp = await sendToContent(tab.id, { action: 'getUserInfo' });
+      if (userResp && userResp.success && userResp.data) {
+        if (userResp.data.userId && !dom.senderId.value) {
+          dom.senderId.value = userResp.data.userId;
+        }
+        if (userResp.data.fullName && !dom.senderName.value) {
+          dom.senderName.value = userResp.data.fullName;
+        }
+        await saveSenderInfo();
+      }
     }
   } catch (_) { /* không sao */ }
 
+  // Hiển thị badge phân quyền
+  updatePermissionBadge();
+
   renderConvList();
   updateButtons();
+}
+
+function updatePermissionBadge() {
+  const canSend = isAuthorizedSender();
+  const name = dom.senderName.value || 'Unknown';
+  const id = dom.senderId.value || 'no ID';
+
+  if (canSend) {
+    dom.userBar.innerHTML =
+      `👤 ${escHtml(name)} (${escHtml(id)}) <span class="badge badge-send">🔓 Gửi tin nhắn</span>`;
+  } else {
+    dom.userBar.innerHTML =
+      `👤 ${escHtml(name)} (${escHtml(id)}) <span class="badge badge-readonly">🔒 Chỉ đọc context</span>`;
+  }
+
+  // Ẩn/hiện các section liên quan đến gửi tin nhắn
+  dom.sectionConversations.classList.toggle('hidden', !canSend);
+  dom.sectionSend.classList.toggle('hidden', !canSend);
+}
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
 }
 
 function showError(msg) {
@@ -221,6 +274,7 @@ async function doSend(content) {
   const senderName = dom.senderName.value.trim();
 
   if (!senderId || !senderName) return alert('Vui lòng điền Sender ID và Name.');
+  if (!isAuthorizedSender()) return alert('⛔ Bạn không có quyền gửi tin nhắn. Chỉ được phép get/update context.');
   if (selected.length === 0) return alert('Vui lòng chọn ít nhất 1 conversation.');
   if (!content) return alert('Không có nội dung để gửi.');
 
@@ -372,11 +426,12 @@ dom.btnPastePage.addEventListener('click', pasteIntoPage);
 
 dom.senderId.addEventListener('change', () => {
   saveSenderInfo();
-  dom.userBar.textContent = `👤 ${dom.senderName.value || 'Unknown'} (${dom.senderId.value || 'no ID'})`;
+  updatePermissionBadge();
+  updateButtons();
 });
 dom.senderName.addEventListener('change', () => {
   saveSenderInfo();
-  dom.userBar.textContent = `👤 ${dom.senderName.value || 'Unknown'} (${dom.senderId.value || 'no ID'})`;
+  updatePermissionBadge();
 });
 
 // --- Utility ---
