@@ -39,15 +39,24 @@
       </div>
     </div>
 
+    <!-- Clipboard -->
+    <div class="section">
+      <label class="section-label">📋 Clipboard</label>
+      <div class="form-row">
+        <button id="btn-read-clipboard" class="btn btn-sm btn-primary">📋 Lấy clipboard</button>
+        <button id="btn-paste-page" class="btn btn-sm btn-outline">📤 Update contextData</button>
+      </div>
+      <div id="clipboard-preview" class="clipboard-preview hidden">
+        <pre id="clipboard-text"></pre>
+      </div>
+    </div>
+
     <!-- Message + Send -->
     <div class="section">
-      <textarea id="msg-content" rows="2" placeholder="Nội dung tin nhắn (bỏ trống nếu dùng nút Copy & Gửi Context)..."></textarea>
+      <textarea id="msg-content" rows="2" placeholder="Nội dung tin nhắn..."></textarea>
       <div class="action-row">
-        <button id="btn-select-all" class="btn btn-sm btn-outline">Chọn / Bỏ chọn tất cả</button>
-        <div class="btn-group">
-          <button id="btn-copy-send" class="btn btn-copy-send">📋 Copy & Gửi Context</button>
-          <button id="btn-send" class="btn btn-send">▶ Gửi</button>
-        </div>
+        <button id="btn-copy-send" class="btn btn-copy-send">📋 Copy & Gửi Context</button>
+        <button id="btn-send" class="btn btn-send">▶ Gửi</button>
       </div>
       <div id="send-result"></div>
     </div>

@@ -98,4 +98,45 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       .catch((e) => sendResponse({ success: false, error: e.message }));
     return true; // giữ kênh async mở
   }
+
+  // Update contextData trong localStorage
+  if (request.action === 'updateContextData') {
+    try {
+      const text = request.text || '';
+      // Validate JSON trước khi ghi
+      JSON.parse(text);
+      localStorage.setItem('contextData', text);
+      sendResponse({ success: true });
+    } catch (e) {
+      sendResponse({ success: false, error: 'Text không phải JSON hợp lệ: ' + e.message });
+    }
+    return true;
+  }
+
+  // Paste text vào trang (tìm editor/textarea và set value) — giữ lại nếu cần
+  if (request.action === 'pasteIntoPage') {
+    try {
+      const text = request.text || '';
+      const cm = document.querySelector('.CodeMirror');
+      if (cm && cm.CodeMirror) {
+        cm.CodeMirror.setValue(text);
+        sendResponse({ success: true, target: 'CodeMirror' });
+        return true;
+      }
+      const inputs = document.querySelectorAll('textarea:not([style*="display: none"]), input[type="text"]:not([style*="display: none"])');
+      for (const el of inputs) {
+        if (el.offsetParent !== null) {
+          el.value = text;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+          sendResponse({ success: true, target: el.tagName });
+          return true;
+        }
+      }
+      sendResponse({ success: false, error: 'Không tìm thấy editor nào trên trang.' });
+    } catch (e) {
+      sendResponse({ success: false, error: e.message });
+    }
+    return true;
+  }
 });

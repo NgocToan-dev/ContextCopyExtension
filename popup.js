@@ -4,6 +4,7 @@
 
 // --- State ---
 let conversations = [];
+let clipboardText = '';
 
 // --- Danh sách người nhận mặc định (sửa ở đây) ---
 const DEFAULT_CONVERSATIONS = [
@@ -21,7 +22,6 @@ async function loadConversations() {
   if (r[STORAGE_KEY] && r[STORAGE_KEY].length > 0) {
     conversations = r[STORAGE_KEY];
   } else {
-    // Lần đầu dùng → load danh sách default
     conversations = [...DEFAULT_CONVERSATIONS];
   }
 }
@@ -54,9 +54,12 @@ const dom = {
   btnAdd: $('#btn-add'),
   convList: $('#conv-list'),
   msgContent: $('#msg-content'),
-  btnSelectAll: $('#btn-select-all'),
   btnCopySend: $('#btn-copy-send'),
   btnSend: $('#btn-send'),
+  btnReadClipboard: $('#btn-read-clipboard'),
+  btnPastePage: $('#btn-paste-page'),
+  clipboardPreview: $('#clipboard-preview'),
+  clipboardText: $('#clipboard-text'),
   sendResult: $('#send-result'),
   errorBanner: $('#error-banner'),
 };
@@ -84,11 +87,9 @@ function sleep(ms) {
 
 // --- Init ---
 async function init() {
-  // Load saved data trước
   await loadSenderInfo();
   await loadConversations();
 
-  // Set defaults nếu chưa có
   if (!dom.senderId.value) {
     dom.senderId.value = '930fe185-0493-4c17-bf32-bf2595fa9cef';
     dom.senderName.value = 'Phan Ngọc Toản';
@@ -98,7 +99,6 @@ async function init() {
   dom.userBar.textContent =
     `👤 ${dom.senderName.value || 'Unknown'} (${dom.senderId.value || 'no ID'})`;
 
-  // Thử lấy context từ trang AMIS (không bắt buộc)
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (tab && tab.url && tab.url.startsWith('https://misajsc.amis.vn')) {
@@ -107,9 +107,7 @@ async function init() {
         dom.userBar.textContent += ' ✅ Connected';
       }
     }
-  } catch (_) {
-    // Không sao — dùng sender đã lưu
-  }
+  } catch (_) { /* không sao */ }
 
   renderConvList();
   updateButtons();
@@ -127,11 +125,19 @@ function renderConvList() {
     return;
   }
 
-  dom.convList.innerHTML = conversations
+  // Hàng checkbox "tất cả"
+  let html = `
+    <label class="item-row checkable select-all-row">
+      <input type="checkbox" id="check-all" class="conv-check-all">
+      <span class="item-info"><strong><em>— Chọn tất cả —</em></strong></span>
+    </label>`;
+
+  // Danh sách conversations (bỏ checked mặc định)
+  html += conversations
     .map(
       (c, i) => `
       <label class="item-row checkable">
-        <input type="checkbox" class="conv-check" value="${i}" checked>
+        <input type="checkbox" class="conv-check" value="${i}">
         <span class="item-info">
           <strong>${esc(c.name)}</strong>
           <code class="item-id">${esc(c.id)}</code>
@@ -141,33 +147,45 @@ function renderConvList() {
     )
     .join('');
 
+  dom.convList.innerHTML = html;
+
   // Bind delete
   dom.convList.querySelectorAll('[data-action="delete"]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
-      e.preventDefault(); // Ngăn checkbox toggle
+      e.preventDefault();
       deleteConv(parseInt(btn.dataset.index));
     });
   });
 
-  updateSelectAllLabel();
+  // Bind check-all
+  const checkAll = $('#check-all');
+  if (checkAll) {
+    checkAll.addEventListener('change', () => {
+      $$('.conv-check').forEach((cb) => (cb.checked = checkAll.checked));
+    });
+  }
+
+  // Bind individual checkboxes → sync check-all
+  dom.convList.querySelectorAll('.conv-check').forEach((cb) => {
+    cb.addEventListener('change', () => syncCheckAll());
+  });
+}
+
+function syncCheckAll() {
+  const checkAll = $('#check-all');
+  if (!checkAll) return;
+  const all = $$('.conv-check');
+  const checked = $$('.conv-check:checked');
+  checkAll.checked = all.length > 0 && checked.length === all.length;
+  checkAll.indeterminate = checked.length > 0 && checked.length < all.length;
 }
 
 function getSelectedConvs() {
   return Array.from($$('.conv-check:checked')).map((cb) => conversations[parseInt(cb.value)]);
 }
 
-function updateSelectAllLabel() {
-  const checks = $$('.conv-check');
-  const checked = $$('.conv-check:checked');
-  dom.btnSelectAll.textContent =
-    checks.length > 0 && checked.length === checks.length
-      ? 'Bỏ chọn tất cả'
-      : 'Chọn tất cả';
-}
-
 function updateButtons() {
   const hasConvs = conversations.length > 0;
-  dom.btnSelectAll.disabled = !hasConvs;
   dom.btnSend.disabled = !hasConvs;
   dom.btnCopySend.disabled = !hasConvs;
 }
@@ -274,19 +292,71 @@ async function copyAndSendContext() {
     }
 
     const ctxJson = JSON.stringify(response.data, null, 2);
-
-    // Gửi context làm nội dung tin nhắn
     await doSend(ctxJson);
   } catch (e) {
     alert('Lỗi: ' + e.message + ' — Hãy mở trang AMIS rồi thử lại.');
   }
 }
 
-// --- Send custom message ---
 async function sendMessage() {
   const content = dom.msgContent.value.trim();
   if (!content) return alert('Vui lòng nhập nội dung tin nhắn.');
   await doSend(content);
+}
+
+// --- Clipboard ---
+async function readClipboard() {
+  try {
+    clipboardText = await navigator.clipboard.readText();
+    if (!clipboardText) {
+      dom.clipboardPreview.classList.add('hidden');
+      alert('Clipboard trống hoặc không có text.');
+      return;
+    }
+    dom.clipboardText.textContent = clipboardText;
+    dom.clipboardPreview.classList.remove('hidden');
+
+    // Tự động fill vào textarea luôn
+    dom.msgContent.value = clipboardText;
+  } catch (e) {
+    alert('Không đọc được clipboard: ' + e.message);
+  }
+}
+
+async function pasteIntoPage() {
+  if (!clipboardText) {
+    await readClipboard();
+  }
+  if (!clipboardText) return alert('Không có text trong clipboard.');
+
+  // Validate JSON trước khi gửi
+  try {
+    JSON.parse(clipboardText);
+  } catch (e) {
+    return alert('Clipboard không chứa JSON hợp lệ. Hãy copy contextData đúng định dạng JSON.');
+  }
+
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.url || !tab.url.startsWith('https://misajsc.amis.vn')) {
+      return alert('Vui lòng mở trang AMIS trước.');
+    }
+
+    const resp = await sendToContent(tab.id, {
+      action: 'updateContextData',
+      text: clipboardText,
+    });
+
+    if (resp && resp.success) {
+      dom.sendResult.innerHTML =
+        `<div class="status-ok">✅ Đã update contextData vào localStorage!</div>`;
+    } else {
+      dom.sendResult.innerHTML =
+        `<div class="status-error">❌ Update thất bại: ${resp?.error || 'Unknown'}</div>`;
+    }
+  } catch (e) {
+    alert('Lỗi: ' + e.message);
+  }
 }
 
 // --- Events ---
@@ -294,19 +364,11 @@ dom.btnAdd.addEventListener('click', addConv);
 dom.convId.addEventListener('keydown', (e) => e.key === 'Enter' && addConv());
 dom.convName.addEventListener('keydown', (e) => e.key === 'Enter' && addConv());
 
-dom.btnSelectAll.addEventListener('click', () => {
-  const checks = $$('.conv-check');
-  const allChecked = Array.from(checks).every((c) => c.checked);
-  checks.forEach((c) => (c.checked = !allChecked));
-  updateSelectAllLabel();
-});
-
-dom.convList.addEventListener('change', (e) => {
-  if (e.target.classList.contains('conv-check')) updateSelectAllLabel();
-});
-
 dom.btnCopySend.addEventListener('click', copyAndSendContext);
 dom.btnSend.addEventListener('click', sendMessage);
+
+dom.btnReadClipboard.addEventListener('click', readClipboard);
+dom.btnPastePage.addEventListener('click', pasteIntoPage);
 
 dom.senderId.addEventListener('change', () => {
   saveSenderInfo();
